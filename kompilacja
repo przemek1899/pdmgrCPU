@@ -1,0 +1,3 @@
+g++ example.cpp -O2 -larmadillo -llapack -lblas
+
+http://stackoverflow.com/questions/20604246/error-while-using-armadillo
