@@ -1,10 +1,11 @@
 #include <iostream>
 #include <armadillo>
 #include <omp.h>
+#include "readFiles.h"
 
-#define ROWS 128
-#define COLS 128
-#define N 128
+#define ROWS 512
+#define COLS 512
+#define N 512
 
 using namespace std;
 using namespace arma;
@@ -20,19 +21,35 @@ const double mu = 0.1f;
 const double lambda = 0.1f;
 const double gammaBregman = 0.0001f;
 const int nBreg = 5;
-const int nInner = 30;
+const int nInner = 25;
 
 int main(int argc, char** argv){
 
-
   mat image(ROWS,COLS, fill::zeros);
+
+  double * matData = (double *) malloc(COLS*ROWS*sizeof(double));
+  const unsigned int totalByteSize = COLS*ROWS;
+  char * filename = "D.bin";
+  readBinaryMatrix(matData, filename, totalByteSize, sizeof(double));
+  cout << "po wczytaniu" << endl;
+
+  for(int i=0; i<ROWS; i++){
+      for(int j=0; j<COLS; j++){
+          image(i,j) = matData[i*ROWS +j];
+      }
+  }
+
+  free(matData);
+
   //ustawienie image
+  /*
   unsigned int start = COLS/4;
   unsigned int end = 3*ROWS/4;
   for(int i=start-1;i < end; i++){
     for(int j=start-1; j<end; j++)
         image(i,j) = 255.0;
   }
+  */
   //image.save("image.mat", raw_binary);
 
 
