@@ -1,9 +1,10 @@
 #include <iostream>
 #include <armadillo>
+#include <omp.h>
 
-#define ROWS 8
-#define COLS 8
-#define N 8
+#define ROWS 128
+#define COLS 128
+#define N 128
 
 using namespace std;
 using namespace arma;
@@ -18,8 +19,8 @@ const double sparsity = 0.25f;
 const double mu = 0.1f;
 const double lambda = 0.1f;
 const double gammaBregman = 0.0001f;
-const int nBreg = 4;
-const int nInner = 8;
+const int nBreg = 5;
+const int nInner = 30;
 
 int main(int argc, char** argv){
 
@@ -32,7 +33,7 @@ int main(int argc, char** argv){
     for(int j=start-1; j<end; j++)
         image(i,j) = 255.0;
   }
-  //image ustawiony na jedynki i zera
+  //image.save("image.mat", raw_binary);
 
 
   mat R = randu<mat>(ROWS,COLS);
@@ -46,11 +47,16 @@ int main(int argc, char** argv){
       }
   }
 
+  //R.save("R.mat", raw_binary);
+
   cx_mat imageFFT = fft2(image);
   imageFFT = imageFFT % R;
   imageFFT = imageFFT / N;
 
+  double start_t = omp_get_wtime();
+
   //aglorytm
+  cx_mat F0 = imageFFT;
   cx_mat U(ROWS,COLS, fill::zeros);
   cx_mat X(ROWS,COLS, fill::zeros);
   cx_mat Y(ROWS,COLS, fill::zeros);
@@ -92,16 +98,28 @@ int main(int argc, char** argv){
               Dy(Yu, U);
               BY = BY + Yu;
               //[x,y] = shrink2( dx+bx, dy+by,1/lambda);
-          }
-      }
+              shrink2(Xu, Yu, X, Y, BX, BY, 1.0/lambda);
 
+              // update bregman parameters
+              BX = BX - X;
+              BY = BY - Y;
+          }
+
+          //f = f+f0-R.*fft2(u)/scale;
+          imageFFT = imageFFT + F0 - (R % (fft2(U))) / scale;
+          //murf = ifft2(mu*R.*f)*scale;
+          MURF = ifft2( mu*(R % imageFFT)) * scale;
+  }
+  // time measure
+
+  double end_t = omp_get_wtime();
+  cout << "total time: " << end_t - start_t << endl;
   //------------
-  //test
-  mat T(4,4, fill::zeros);
-  mat II(4,4, fill::ones);
-  //T = T*4.0;
-  umat Re = (T > II);
-  cout << T << endl;
+  mat realU = real(U);
+  mat imagU = imag(U);
+  realU.save("Ureal.mat", raw_binary);
+  imagU.save("Uimag.mat", raw_binary);
+
   return 0;
 }
 
@@ -134,6 +152,12 @@ void shrink2(cx_mat & S, cx_mat & SS, cx_mat & X, cx_mat & Y, cx_mat & BDX, cx_m
 
     S = sqrt(X%conj(X) + Y%conj(Y));
     SS = S-lambda;
- //   SS = SS % (SS > )
+    SS = SS % conv_to<mat>::from(real(SS) > 0.0);
+
+    S = S + conv_to<mat>::from(real(S) < lambda);
+    SS = SS / S;
+
+    X = SS % BDX;
+    Y = SS % BDY;
 }
 

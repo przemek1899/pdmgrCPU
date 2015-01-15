@@ -1,2 +1,2 @@
 main: main.cpp
-	g++ main.cpp -O2 -larmadillo -llapack -lblas
+	g++ main.cpp -O2 -fopenmp -larmadillo -llapack -lblas
